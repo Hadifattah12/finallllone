@@ -9,8 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cd backend && npm install` - Install backend dependencies
 
 ### Frontend (TypeScript/Vite)  
-- `cd frontend && npm run dev` - Start frontend dev server on port 5173
+- `cd frontend && npm run dev` - Start frontend dev server on port 5173 with host binding for external access
 - `cd frontend && npm run build` - Build frontend for production (runs TypeScript compilation + Vite build)
+- `cd frontend && npm run preview` - Preview production build locally
 - `cd frontend && npm install` - Install frontend dependencies
 
 ### Docker Development
@@ -39,10 +40,12 @@ This is a full-stack multiplayer Pong game application with the following struct
 
 ### Frontend (/frontend)
 - **Framework**: Vanilla TypeScript with Vite bundler
+- **Development Server**: Configured with host binding (0.0.0.0) and HTTPS support via certificates
 - **Routing**: Hash-based SPA router with authentication guards
 - **UI**: Custom CSS with responsive design
 - **Internationalization**: i18next with language detection (English, French, Arabic)
 - **Game Engine**: Canvas-based Pong implementation with AI opponent
+- **Animations**: Canvas confetti effects and Chart.js for data visualization
 - **Features**:
   - Local and remote multiplayer Pong
   - AI opponent with adjustable difficulty

@@ -53,20 +53,56 @@ const fastifyStatic = require('@fastify/static');
 const multipart     = require('@fastify/multipart');
 
 fastify.register(fastifyCors, {
-    origin: [
-    `https://${myIP}:5173`,
-    `http://${myIP}:5173`,
-    ...process.env.CORS_42_ORIGINS?.split(',') || [],
-    'https://localhost:5173',
-    'http://localhost:5173',
-    'https://127.0.0.1:5173',
-    'http://127.0.0.1:5173',
-    'https://c1r6s6.42beirut.com:5173'
-  ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) {
+        console.log('✅ CORS: Allowing request with no origin');
+        return callback(null, true);
+      }
+      
+      const allowedOrigins = [
+        `https://${myIP}:5173`,
+        `http://${myIP}:5173`,
+        ...process.env.CORS_42_ORIGINS?.split(',').filter(Boolean) || [],
+        'https://localhost:5173',
+        'http://localhost:5173',
+        'https://127.0.0.1:5173',
+        'http://127.0.0.1:5173'
+      ];
+
+      console.log('🔍 CORS: Checking origin:', origin);
+      console.log('🔍 CORS: Allowed origins:', allowedOrigins);
+      console.log('🔍 CORS: Current IP detected as:', myIP);
+
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        console.log('✅ CORS: Origin allowed');
+        return callback(null, true);
+      }
+      
+      // For development, allow any origin that matches the pattern of 42beirut.com domains
+      if (origin.includes('42beirut.com:5173')) {
+        console.log('✅ CORS: 42beirut.com domain allowed for development');
+        return callback(null, true);
+      }
+      
+      // Firefox compatibility: allow origins ending with :5173 for development
+      if (origin.endsWith(':5173')) {
+        console.log('✅ CORS: Development port 5173 allowed for Firefox compatibility');
+        return callback(null, true);
+      }
+      
+      console.log('❌ CORS: Origin NOT allowed');
+      return callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+    },
 
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200, // For legacy browser support
+  preflightContinue: false,
+  maxAge: 86400 // Cache preflight for 24 hours
 });
 
 /* ---- register cookie plugin *before* JWT so jwt can read cookies ---- */
@@ -97,6 +133,15 @@ fastify.register(fastifyStatic, {
   prefix: '/uploads/'
 });
 
+/* ----------------------- Additional security headers --------------- */
+fastify.addHook('onRequest', async (_request, reply) => {
+  // Add security headers for Firefox compatibility
+  reply.header('Strict-Transport-Security', 'max-age=0; includeSubDomains');
+  reply.header('X-Content-Type-Options', 'nosniff');
+  reply.header('X-Frame-Options', 'SAMEORIGIN');
+  reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+});
+
 /* ----------------------------- routes ------------------------------ */
 fastify.register(require('./routes/avatar'));
 fastify.register(require('./routes/auth'),    { prefix: '/api' });
@@ -105,6 +150,15 @@ fastify.register(require('./routes/friends'), { prefix: '/api' });
 
 fastify.get('/', (_req, reply) => {
   reply.type('text/html').send(`<script>location.href = '#/home'</script>`);
+});
+
+// Special route for Firefox SSL certificate acceptance
+fastify.get('/firefox-ssl-test', (_req, reply) => {
+  reply.type('application/json').send({
+    message: 'SSL connection successful',
+    browser: 'firefox-compatible',
+    timestamp: new Date().toISOString()
+  });
 });
 
 /* ----------------------- online users set -------------------------- */
